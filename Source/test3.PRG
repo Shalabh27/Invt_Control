@@ -1,0 +1,5 @@
+CREATE CURS FINAL(CRI_C c(40),CRI_NSC c(40),DCVG c(40), ps_on c(40), ps_off c(40), diff_c c(40), no_of_row n(5),terr c(40), ENV_LEN N(12,2),Total n(12,2)) 	
+
+APPEND BLANK
+REPLACE cri_c WITH "%IR", dcvg WITH "%IR", ps_on WITH "--", ps_off WITH "--", diff_c WITH "--", terr WITH "--", no_of_row WITH 10, env_len WITH 10.23, total WITH 10
+brows

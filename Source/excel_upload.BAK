@@ -1,0 +1,6 @@
+SET PROCEDURE TO appendfromxlsx
+
+CREATE CURSOR exceltest (name1 CHR(20),class int) && Create curs of same columns as exist in excel
+do appendfromxlsx WITH 'd:\test.xlsx'  && Provide Name and Path of Excel File (XLSX) 
+
+brows

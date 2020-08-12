@@ -1,0 +1,13 @@
+*!*	mSheet_nm = "Test"
+*!*	lcSQLCmd = [Select * FROM "&mSheet_nm$"]
+*!*	?lcSQLCmd 
+
+SELECT * from survey INTO CURSOR test
+SET STEP ON 
+i=1
+DO while i < 1000
+SELECT survey
+APPEND FROM test
+
+i=i+1
+enddo

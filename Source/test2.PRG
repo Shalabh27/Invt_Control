@@ -1,0 +1,687 @@
+SET DELETED on
+SELECT scc_asph , IIF(LEN(ALLTRIM(cri_p))=0,cri_t,cri_p) AS cri_p,COUNT(*) AS no_of_row , SUM(ENV_LEN) AS ENV_LEN,DCVG , ;
+	ps_on1 , ps_off1 ,diff1 ,terr,  scc_y, SPACE(1) AS sin_con FROM final_graph INTO CURSOR test1 GROUP BY ;
+	scc_asph , cri_t,cri_p, DCVG , ps_on1 , ps_off1 ,diff1 ,terr, scc_y READWRITE
+
+SELECT scc_asph , cri_p, SUM(no_of_row) as no_of_row , SUM(ENV_LEN) AS ENV_LEN,DCVG , ;
+	ps_on1 , ps_off1 ,diff1 ,terr,  scc_y, sin_con FROM test1 INTO CURSOR test1 GROUP BY ;
+	scc_asph , cri_p, DCVG , ps_on1 , ps_off1 ,diff1 ,terr, scc_y,sin_con READWRITE
+
+
+REPLACE ALL sin_con WITH "1" FOR AT("/",scc_asph)>0
+
+SELECT * INTO CURSOR test2 FROM  test1 ORDER BY scc_y DESC, sin_con  READWRITE
+
+SELECT scc_asph , SPACE(1) as cri_p, SUM(no_of_row) as no_of_row , SUM(ENV_LEN) AS ENV_LEN,DCVG , ;
+	ps_on1 , ps_off1 ,diff1 ,terr,  scc_y, sin_con FROM test2 INTO CURSOR test2_scc GROUP BY ;
+	scc_asph , DCVG , ps_on1 , ps_off1 ,diff1 ,terr, scc_y,sin_con READWRITE
+
+
+SELECT SUM(ENV_LEN) AS g_total, SUM(no_of_row) as g_total_row FROM test2 INTO CURSOR test1
+
+g_tot = test1.g_total
+g_tot_row = test1.g_total_row 
+
+SELECT 0
+CREATE CURSOR summary_s (scc_asph c(40),cri_p c(40), DCVG c(40), ps_on c(40), ps_off c(40), diff_c c(40), terr c(40),no_of_row N(5), ENV_LEN N(9,2),;
+	Total_p N(10,4))
+SELECT 0
+CREATE CURSOR summary_s1 (scc_asph c(40),cri_p c(40), DCVG c(40), ps_on c(40), ps_off c(40), diff_c c(40), terr c(40),no_of_row N(5), ENV_LEN N(9,2),;
+	Total_p N(10,4))
+
+SELECT 0
+CREATE CURSOR summary_s2 (scc_asph c(40),cri_p c(40), DCVG c(40), ps_on c(40), ps_off c(40), diff_c c(40), terr c(40),no_of_row N(5), ENV_LEN N(9,2),;
+	Total_p N(10,4))
+
+
+SELECT summary_s
+APPEND BLANK
+REPLACE scc_asph WITH "%IR"
+SELECT test2_scc
+GO TOP
+LOCATE FOR UPPER(RTRIM(scc_asph)) = "%IR" AND scc_y = "1"
+IF FOUND()
+	SELECT summary_s
+	REPLACE DCVG WITH "%IR"
+	REPLACE ENV_LEN WITH test2_scc.ENV_LEN
+	REPLACE no_of_row WITH test2_scc.no_of_row
+	REPLACE Total_p WITH (ENV_LEN/g_tot)
+	SELECT test2_scc
+	DELETE
+ENDIF
+
+SELECT summary_s
+APPEND BLANK
+REPLACE scc_asph WITH "ON=<850"
+SELECT test2_scc 
+GO TOP
+LOCATE FOR UPPER(RTRIM(scc_asph)) = "ON=<850"  AND scc_y = "1"
+IF FOUND()
+	SELECT summary_s
+	REPLACE ps_on WITH "ON=<850"
+	REPLACE ENV_LEN WITH test2_scc.ENV_LEN
+	REPLACE no_of_row WITH test2_scc.no_of_row
+	REPLACE Total_p WITH (ENV_LEN/g_tot)
+	SELECT test2_scc
+	DELETE
+ENDIF
+
+SELECT summary_s
+APPEND BLANK
+REPLACE scc_asph WITH "OFF=<850"
+SELECT test2_scc 
+GO TOP
+LOCATE FOR UPPER(RTRIM(scc_asph)) = "OFF=<850"  AND scc_y = "1"
+IF FOUND()
+	SELECT summary_s
+	REPLACE ps_off WITH "OFF=<850"
+	REPLACE ENV_LEN WITH test2_scc.ENV_LEN
+	REPLACE no_of_row WITH test2_scc.no_of_row
+	REPLACE Total_p WITH (ENV_LEN/g_tot)
+	SELECT test2_scc
+	DELETE
+ENDIF
+
+SELECT summary_s
+APPEND BLANK
+REPLACE scc_asph WITH "DIFF=<100"
+SELECT test2_scc
+GO TOP
+LOCATE FOR UPPER(RTRIM(scc_asph)) = "DIFF=<100"  AND scc_y = "1"
+IF FOUND()
+	SELECT summary_s
+	REPLACE diff_c WITH "DIFF=<100"
+	REPLACE ENV_LEN WITH test2_scc.ENV_LEN
+	REPLACE no_of_row WITH test2_scc.no_of_row
+	REPLACE Total_p WITH (ENV_LEN/g_tot)
+	SELECT test2_scc
+	DELETE
+ENDIF
+
+
+*!*	replace ps_on WITH "--"
+*!*	replace ps_off WITH "--"
+*!*	replace diff_c WITH "--"
+*!*	replace terr WITH "--"
+*!*	replace no_of_row WITH test2.no_of_row
+*!*	replace ENV_LEN WITH test2.ENV_LEN
+*!*	replace total WITH 15
+
+SELECT * into CURSOR test3 FROM test2_scc WHERE scc_y="1" AND ALLTRIM(sin_con) ="0"
+
+SELECT test3
+GO TOP
+SCAN
+
+	SELECT summary_s
+	APPEND BLANK
+	REPLACE scc_asph WITH ALLTRIM(test3.scc_asph)
+	REPLACE cri_p WITH IIF(test3.scc_y="1","",ALLTRIM(test3.cri_p))
+	REPLACE DCVG WITH ALLTRIM(test3.DCVG)
+	REPLACE ps_on WITH ALLTRIM(test3.ps_on1)
+	REPLACE ps_off WITH ALLTRIM(test3.ps_off1)
+	REPLACE diff_c WITH ALLTRIM(test3.diff1)
+	REPLACE no_of_row WITH test3.no_of_row
+	REPLACE terr WITH ALLTRIM(test3.terr)
+	REPLACE ENV_LEN WITH test3.ENV_LEN
+	REPLACE Total_p WITH (ENV_LEN/g_tot)
+ENDS
+
+SELECT * into CURSOR test3 FROM test2_scc WHERE scc_y="1" AND (LEN(ALLTRIM(sin_con))>0 AND ALLTRIM(sin_con) ="1")
+SELECT test3
+GO TOP
+SCAN
+
+	SELECT summary_s1
+	APPEND BLANK
+	REPLACE scc_asph WITH ALLTRIM(test3.scc_asph)
+	REPLACE cri_p WITH IIF(test3.scc_y="1","",ALLTRIM(test3.cri_p))
+	REPLACE DCVG WITH ALLTRIM(test3.DCVG)
+	REPLACE ps_on WITH ALLTRIM(test3.ps_on1)
+	REPLACE ps_off WITH ALLTRIM(test3.ps_off1)
+	REPLACE diff_c WITH ALLTRIM(test3.diff1)
+	REPLACE no_of_row WITH test3.no_of_row
+	REPLACE terr WITH ALLTRIM(test3.terr)
+	REPLACE ENV_LEN WITH test3.ENV_LEN
+	REPLACE Total_p WITH (ENV_LEN/g_tot)
+ENDS
+
+SELECT * into CURSOR test3 FROM test2 WHERE scc_y="0" 
+SELECT test3
+GO TOP
+SCAN
+
+	SELECT summary_s2
+	APPEND BLANK
+	REPLACE scc_asph WITH ALLTRIM(test3.scc_asph)
+	REPLACE cri_p WITH IIF(test3.scc_y="1","",ALLTRIM(test3.cri_p))
+	REPLACE DCVG WITH ALLTRIM(test3.DCVG)
+	REPLACE ps_on WITH ALLTRIM(test3.ps_on1)
+	REPLACE ps_off WITH ALLTRIM(test3.ps_off1)
+	REPLACE diff_c WITH ALLTRIM(test3.diff1)
+	REPLACE no_of_row WITH test3.no_of_row
+	REPLACE terr WITH ALLTRIM(test3.terr)
+	REPLACE ENV_LEN WITH test3.ENV_LEN
+	REPLACE Total_p WITH (ENV_LEN/g_tot)
+ENDS
+
+
+
+SELECT summary_s
+GO TOP
+
+abc1 = SYS(5)+CURDIR()+"summary"
+COPY TO "&abc1" TYPE XL5
+
+LOCAL oExcel, oSheet
+oExcel = CREATEOBJECT("Excel.Application")
+*oWorkbook = oExcel.Application.Workbooks.Add("C:\test.xlt")
+abc1 = abc1+".xls"
+
+oWorkbook = oExcel.APPLICATION.Workbooks.OPEN(abc1)
+
+*!*		oExcel = CREATEOBJECT([Excel.Application])
+*!*		oExcel.Workbooks.ADD()
+
+oSheet = oExcel.ActiveSheet
+
+oSheet.cells(1,1).EntireRow.INSERT
+oSheet.cells(1,1).EntireRow.INSERT
+oSheet.cells(1,1).EntireRow.INSERT
+oSheet.cells(1,1).EntireRow.INSERT
+
+lnRow = 1
+
+oSheet.cells(lnRow,1).VALUE = "ABC" &&ALLTRIM(THISFORM.txtclient.VALUE)
+
+oSheet.RANGE("A1:j1").MergeCells=.T.
+oSheet.RANGE("A1:j1").FONT.bold=.T.
+oSheet.RANGE("A1:j1").HorizontalAlignment = -4108
+
+lnRow = lnRow + 1
+*oSheet.Cells(lnRow,1).Value =
+
+oSheet.cells(lnRow,1).VALUE = " Summary of SCC Susceptibility for: " + ALLTRIM(THISFORM.txtpipe_name.VALUE)
+oSheet.RANGE("A2:J2").SELECT
+oSheet.RANGE("A2:J2").MergeCells=.T.
+oSheet.RANGE("A2:J2").FONT.bold=.T.
+oSheet.RANGE("A2:J2").HorizontalAlignment = -4108
+
+lnRow = lnRow + 1
+*oSheet.Cells(lnRow,1).Value =
+
+oSheet.cells(lnRow,1).VALUE =  ALLTRIM(STR(THISFORM.txtfrom.VALUE)) + " To " + ALLTRIM(STR(.txtto.VALUE)) + " ( "+ ALLTRIM(.txtshort_Form.VALUE) + " To " + ALLT(.txtshort_To.VALUE) + ")"
+oSheet.RANGE("A3:J3").SELECT
+oSheet.RANGE("A3:J3").MergeCells=.T.
+oSheet.RANGE("A3:J3").FONT.bold=.T.
+oSheet.RANGE("A3:J3").HorizontalAlignment = -4108
+
+lnRow = lnRow + 1
+*oSheet.Cells(lnRow,1).Value =
+
+oSheet.cells(lnRow,1).VALUE =  "Susceptible and Non-Susceptible Conditions Summary"
+oSheet.RANGE("A4:J4").SELECT
+oSheet.RANGE("A4:J4").MergeCells=.T.
+oSheet.RANGE("A4:J4").FONT.bold=.T.
+oSheet.RANGE("A4:J4").HorizontalAlignment = -4108
+
+*!*	    With Selection
+*!*	        .HorizontalAlignment = xlCenter
+*!*	        .VerticalAlignment = xlBottom
+*!*	        .WrapText = False
+*!*	        .Orientation = 0
+*!*	        .AddIndent = False
+*!*	        .IndentLevel = 0
+*!*	        .ShrinkToFit = False
+*!*	        .ReadingOrder = xlContext
+*!*	        .MergeCells = False
+*!*	        .font.bold = .t.
+*!*	    EndWith
+*!*	    Selection.Merge
+
+
+lnRow = lnRow + 1
+
+
+oSheet.RANGE("b4:J4").COLUMNWIDTH = 10
+oSheet.cells(lnRow,1).VALUE = "SCCode"
+oSheet.cells(lnRow,1).COLUMNWIDTH = 35
+oSheet.cells(lnRow,2).VALUE = "NON SCC Cond."
+oSheet.cells(lnRow,2).COLUMNWIDTH = 25
+oSheet.cells(lnRow,3).COLUMNWIDTH = 15
+oSheet.cells(lnRow,4).COLUMNWIDTH = 15
+oSheet.cells(lnRow,5).COLUMNWIDTH = 15
+oSheet.cells(lnRow,6).COLUMNWIDTH = 15
+oSheet.cells(lnRow,7).COLUMNWIDTH = 15
+oSheet.cells(lnRow,8).COLUMNWIDTH = 15
+oSheet.cells(lnRow,3).VALUE = "DCVG"
+oSheet.cells(lnRow,4).VALUE = "PS ON"
+oSheet.cells(lnRow,5).VALUE = "PS OFF"
+oSheet.cells(lnRow,6).VALUE = "DIFF"
+oSheet.cells(lnRow,7).VALUE = "TERRAIN"
+oSheet.cells(lnRow,8).VALUE = "NO. OF ROWS"
+oSheet.cells(lnRow,9).VALUE = "LENGTH(Ft.)"
+oSheet.cells(lnRow,10).VALUE = "TOTAL %"
+
+oSheet.RANGE("A5:J5").FONT.bold=.T.
+oSheet.RANGE("A5:J5").WrapText = .T.
+oSheet.RANGE("A5:J5").FONT.SIZE = 8
+oSheet.RANGE("A5:J5").HorizontalAlignment = -4108
+
+*	oSheet.RANGE(oSheet.cells(1,1), oSheet.cells(RECCOUNT()+4,55)).FONT.SIZE = 8
+*	oSheet.RANGE(oSheet.cells(lnRow+1,1), oSheet.cells(RECCOUNT()+4,1)).FONT.bold = .T.
+SELECT test2
+oSheet.RANGE(oSheet.cells(lnRow+1,9), oSheet.cells(RECCOUNT()+7,9)).NumberFormat = "0+00.00"
+oSheet.RANGE(oSheet.cells(lnRow+1,10), oSheet.cells(RECCOUNT()+7,10)).NumberFormat = "0.00%"
+
+SELECT summary_s
+GO TOP
+tot_no_row=0
+tot_len=0.00
+tot_per=0.00
+SCAN
+	lnRow = lnRow + 1
+
+	oSheet.cells(lnRow,1).VALUE = UPPER(ALLTRIM(scc_asph))
+	oSheet.cells(lnRow,2).VALUE = UPPER(ALLTRIM(cri_p))
+	oSheet.cells(lnRow,3).VALUE = IIF(LEN(UPPER(ALLTRIM(DCVG)))=0,'--',UPPER(ALLTRIM(DCVG)))
+
+	oSheet.RANGE(oSheet.cells(lnRow,3), oSheet.cells(lnRow,3)).HorizontalAlignment = -4108
+
+	oSheet.cells(lnRow,4).VALUE = IIF(LEN(UPPER(ALLTRIM(ps_on)))=0,'--',UPPER(ALLTRIM(ps_on)))
+	oSheet.RANGE(oSheet.cells(lnRow,4), oSheet.cells(lnRow,4)).HorizontalAlignment = -4108
+	oSheet.cells(lnRow,5).VALUE = IIF(LEN(UPPER(ALLTRIM(ps_off)))=0,'--',UPPER(ALLTRIM(ps_off)))
+	oSheet.RANGE(oSheet.cells(lnRow,5), oSheet.cells(lnRow,5)).HorizontalAlignment = -4108
+	oSheet.cells(lnRow,6).VALUE = IIF(LEN(UPPER(ALLTRIM(diff_c)))=0,'--',UPPER(ALLTRIM(diff_c)))
+	oSheet.RANGE(oSheet.cells(lnRow,6), oSheet.cells(lnRow,6)).HorizontalAlignment = -4108
+	oSheet.cells(lnRow,7).VALUE = IIF(LEN(UPPER(ALLTRIM(terr)))=0,'--', UPPER(ALLTRIM(terr)))
+	oSheet.RANGE(oSheet.cells(lnRow,7), oSheet.cells(lnRow,7)).HorizontalAlignment = -4108
+	oSheet.cells(lnRow,8).VALUE = no_of_row
+	oSheet.cells(lnRow,9).VALUE = ENV_LEN
+	oSheet.cells(lnRow,10).VALUE = Total_p
+
+tot_no_row=tot_no_row+no_of_row
+tot_len=tot_len+ENV_LEN
+tot_per=tot_per+Total_p
+
+ENDSCAN
+lnRow=lnRow+2
+oSheet.cells(lnRow,2).VALUE = "Total"
+oSheet.cells(lnRow,8).VALUE = tot_no_row
+oSheet.cells(lnRow,9).VALUE = tot_len
+oSheet.cells(lnRow,10).VALUE = tot_per
+
+oSheet.RANGE(oSheet.cells(lnRow,2), oSheet.cells(lnRow,7)).MergeCells=.T.
+oSheet.RANGE(oSheet.cells(lnRow,2), oSheet.cells(lnRow,7)).HorizontalAlignment = -4108
+oSheet.RANGE(oSheet.cells(lnRow,2), oSheet.cells(lnRow,10)).FONT.bold=.T.
+
+lnRow=lnRow+1
+
+oSheet.RANGE(oSheet.cells(lnRow,1), oSheet.cells(lnRow,10)).MergeCells=.T.
+oSheet.cells(lnRow,1).VALUE = "SCC Susceptible Conditions with Overlap of Various Criteris's"
+oSheet.cells(lnRow,1).FONT.bold=.T.
+
+SELECT summary_s1
+GO TOP
+tot_no_row=0
+tot_len=0.00
+tot_per=0.00
+SCAN
+	lnRow = lnRow + 1
+
+	oSheet.cells(lnRow,1).VALUE = UPPER(ALLTRIM(scc_asph))
+	oSheet.cells(lnRow,2).VALUE = UPPER(ALLTRIM(cri_p))
+	oSheet.cells(lnRow,3).VALUE = IIF(LEN(UPPER(ALLTRIM(DCVG)))=0,'--',UPPER(ALLTRIM(DCVG)))
+
+	oSheet.RANGE(oSheet.cells(lnRow,3), oSheet.cells(lnRow,3)).HorizontalAlignment = -4108
+
+	oSheet.cells(lnRow,4).VALUE = IIF(LEN(UPPER(ALLTRIM(ps_on)))=0,'--',UPPER(ALLTRIM(ps_on)))
+	oSheet.RANGE(oSheet.cells(lnRow,4), oSheet.cells(lnRow,4)).HorizontalAlignment = -4108
+	oSheet.cells(lnRow,5).VALUE = IIF(LEN(UPPER(ALLTRIM(ps_off)))=0,'--',UPPER(ALLTRIM(ps_off)))
+	oSheet.RANGE(oSheet.cells(lnRow,5), oSheet.cells(lnRow,5)).HorizontalAlignment = -4108
+	oSheet.cells(lnRow,6).VALUE = IIF(LEN(UPPER(ALLTRIM(diff_c)))=0,'--',UPPER(ALLTRIM(diff_c)))
+	oSheet.RANGE(oSheet.cells(lnRow,6), oSheet.cells(lnRow,6)).HorizontalAlignment = -4108
+	oSheet.cells(lnRow,7).VALUE = IIF(LEN(UPPER(ALLTRIM(terr)))=0,'--', UPPER(ALLTRIM(terr)))
+	oSheet.RANGE(oSheet.cells(lnRow,7), oSheet.cells(lnRow,7)).HorizontalAlignment = -4108
+	oSheet.cells(lnRow,8).VALUE = no_of_row
+	oSheet.cells(lnRow,9).VALUE = ENV_LEN
+	oSheet.cells(lnRow,10).VALUE = Total_p
+
+tot_no_row=tot_no_row+no_of_row
+tot_len=tot_len+ENV_LEN
+tot_per=tot_per+Total_p
+
+ENDSCAN
+lnRow=lnRow+2
+oSheet.cells(lnRow,2).VALUE = "Total"
+oSheet.cells(lnRow,8).VALUE = tot_no_row
+oSheet.cells(lnRow,9).VALUE = tot_len
+oSheet.cells(lnRow,10).VALUE = tot_per
+
+oSheet.RANGE(oSheet.cells(lnRow,2), oSheet.cells(lnRow,7)).MergeCells=.T.
+oSheet.RANGE(oSheet.cells(lnRow,2), oSheet.cells(lnRow,7)).HorizontalAlignment = -4108
+oSheet.RANGE(oSheet.cells(lnRow,2), oSheet.cells(lnRow,10)).FONT.bold=.T.
+
+lnRow=lnRow+1
+
+oSheet.cells(lnRow,2).VALUE = "Not Susceptible Conditions"
+oSheet.RANGE(oSheet.cells(lnRow,2), oSheet.cells(lnRow,10)).MergeCells=.T.
+oSheet.cells(lnRow,2).FONT.bold=.T.
+
+SELECT summary_s2
+oSheet.RANGE(oSheet.cells(lnRow+1,9), oSheet.cells(RECCOUNT()+lnRow+4,9)).NumberFormat = "0+00.00"
+oSheet.RANGE(oSheet.cells(lnRow+1,10), oSheet.cells(RECCOUNT()+lnRow+4,10)).NumberFormat = "0.00%"
+GO TOP
+tot_no_row=0
+tot_len=0.00
+tot_per=0.00
+SCAN
+	lnRow = lnRow + 1
+
+	oSheet.cells(lnRow,1).VALUE = IIF(LEN(UPPER(ALLTRIM(scc_asph)))=0,'--',UPPER(ALLTRIM(scc_asph)))
+	oSheet.cells(lnRow,2).VALUE = UPPER(ALLTRIM(cri_p))
+	oSheet.cells(lnRow,3).VALUE = IIF(LEN(UPPER(ALLTRIM(DCVG)))=0,'--',UPPER(ALLTRIM(DCVG)))
+
+	oSheet.RANGE(oSheet.cells(lnRow,3), oSheet.cells(lnRow,3)).HorizontalAlignment = -4108
+
+	oSheet.cells(lnRow,4).VALUE = IIF(LEN(UPPER(ALLTRIM(ps_on)))=0,'--',UPPER(ALLTRIM(ps_on)))
+	oSheet.RANGE(oSheet.cells(lnRow,4), oSheet.cells(lnRow,4)).HorizontalAlignment = -4108
+	oSheet.cells(lnRow,5).VALUE = IIF(LEN(UPPER(ALLTRIM(ps_off)))=0,'--',UPPER(ALLTRIM(ps_off)))
+	oSheet.RANGE(oSheet.cells(lnRow,5), oSheet.cells(lnRow,5)).HorizontalAlignment = -4108
+	oSheet.cells(lnRow,6).VALUE = IIF(LEN(UPPER(ALLTRIM(diff_c)))=0,'--',UPPER(ALLTRIM(diff_c)))
+	oSheet.RANGE(oSheet.cells(lnRow,6), oSheet.cells(lnRow,6)).HorizontalAlignment = -4108
+	oSheet.cells(lnRow,7).VALUE = IIF(LEN(UPPER(ALLTRIM(terr)))=0,'--', UPPER(ALLTRIM(terr)))
+	oSheet.RANGE(oSheet.cells(lnRow,7), oSheet.cells(lnRow,7)).HorizontalAlignment = -4108
+	oSheet.cells(lnRow,8).VALUE = no_of_row
+	oSheet.cells(lnRow,9).VALUE = ENV_LEN
+	oSheet.cells(lnRow,10).VALUE = Total_p
+
+tot_no_row=tot_no_row+no_of_row
+tot_len=tot_len+ENV_LEN
+tot_per=tot_per+Total_p
+
+ENDSCAN
+lnRow=lnRow+2
+oSheet.cells(lnRow,2).VALUE = "Total"
+oSheet.cells(lnRow,8).VALUE = tot_no_row
+oSheet.cells(lnRow,9).VALUE = tot_len
+oSheet.cells(lnRow,10).VALUE = tot_per
+
+oSheet.RANGE(oSheet.cells(lnRow,2), oSheet.cells(lnRow,7)).MergeCells=.T.
+oSheet.RANGE(oSheet.cells(lnRow,2), oSheet.cells(lnRow,7)).HorizontalAlignment = -4108
+oSheet.RANGE(oSheet.cells(lnRow,2), oSheet.cells(lnRow,10)).FONT.bold=.T.
+
+lnRow=lnRow+1
+oSheet.RANGE(oSheet.cells(lnRow,1), oSheet.cells(lnRow,10)).MergeCells=.T.
+lnRow=lnRow+1
+oSheet.cells(lnRow,1).VALUE = "Total"
+oSheet.cells(lnRow,8).VALUE = g_tot_row 
+oSheet.cells(lnRow,9).VALUE = g_tot
+oSheet.cells(lnRow,10).VALUE = 1
+
+oSheet.RANGE(oSheet.cells(lnRow,1), oSheet.cells(lnRow,7)).MergeCells=.T.
+oSheet.RANGE(oSheet.cells(lnRow,1), oSheet.cells(lnRow,7)).HorizontalAlignment = -4108
+oSheet.RANGE(oSheet.cells(lnRow,1), oSheet.cells(lnRow,10)).FONT.bold=.T.
+
+oSheet.RANGE(oSheet.cells(1,1), oSheet.cells(lnRow,10)).Borders(9) &&Bottom
+oSheet.RANGE(oSheet.cells(1,1), oSheet.cells(lnRow,10)).Borders.LineStyle = 1
+oSheet.RANGE(oSheet.cells(1,1), oSheet.cells(lnRow,10)).Borders.Weight = 2
+oSheet.RANGE(oSheet.cells(1,1), oSheet.cells(lnRow,10)).Borders.ColorIndex = -4105
+
+lnRow=lnRow+3
+oSheet.cells(lnRow,1).VALUE="Note"
+lnRow=lnRow+1
+oSheet.cells(lnRow,1).VALUE="1. For color coding Susceptible Terrain conditions are given a higher ranking compared to CP Susceptible conditions."
+
+lnRow=lnRow+1
+oSheet.cells(lnRow,1).VALUE="2. All CIPS ON/OFF>850 mV are stated as '--'"
+
+lnRow=lnRow+1
+oSheet.cells(lnRow,1).VALUE="3. For SMYS % of 55 to 59.9 it is considered as Heavy Wall and highlighted."
+
+lnRow=lnRow+2
+oSheet.cells(lnRow,1).VALUE = "Disclaimer : "+ALLTRIM(THISFORM.txtsection_nm.VALUE)
+
+oExcel.ErrorCheckingOptions.NumberAsText = .F.
+oExcel.VISIBLE = .T.
+
+
+*!*		LOCAL oExcel, oSheet
+*!*		oExcel = CREATEOBJECT([Excel.Application])
+*!*		oExcel.Workbooks.ADD()
+
+*!*		oSheet = oExcel.ActiveSheet
+
+*!*		lnRow = 1
+*!*		oSheet.Cells(lnRow,1).VALUE = ALLTRIM(THISFORM.txtclient.VALUE)
+
+*!*		oSheet.RANGE("A1:BC1").MergeCells=.T.
+*!*		oSheet.RANGE("A1:BC1").FONT.bold=.T.
+*!*		oSheet.RANGE("A1:BC1").HorizontalAlignment = -4108
+
+*!*	*!*	    Withselect
+*!*	*!*	        .HorizontalAlignment = xlCenter
+*!*	*!*	        .VerticalAlignment = xlBottom
+*!*	*!*	        .WrapText = False
+*!*	*!*	        .Orientation = 0
+*!*	*!*	        .AddIndent = False
+*!*	*!*	        .IndentLevel = 0
+*!*	*!*	        .ShrinkToFit = False
+*!*	*!*	        .ReadingOrder = xlContext
+*!*	*!*	        .MergeCells = False
+*!*	*!*	        .font.bold = .t.
+*!*	*!*	    EndWith
+*!*	*!*	    Selection.Merge
+
+
+*!*		lnRow = lnRow + 1
+*!*	*oSheet.Cells(lnRow,1).Value =
+
+*!*		oSheet.Cells(lnRow,1).VALUE = " Summary of SCC Susceptibility for: " + ALLTRIM(THISFORM.txtpipe_name.VALUE)
+*!*		oSheet.RANGE("A2:BC2").SELECT
+*!*		oSheet.RANGE("A2:BC2").MergeCells=.T.
+*!*		oSheet.RANGE("A2:BC2").FONT.bold=.T.
+*!*		oSheet.RANGE("A2:BC2").HorizontalAlignment = -4108
+
+*!*		lnRow = lnRow + 1
+*!*	*oSheet.Cells(lnRow,1).Value =
+
+*!*		oSheet.Cells(lnRow,1).VALUE =  ALLTRIM(STR(THISFORM.txtfrom.VALUE)) + " To " + ALLTRIM(STR(.txtto.VALUE)) + " ( "+ ALLTRIM(.txtshort_Form.VALUE) + " To " + ALLT(.txtshort_To.VALUE) + ")"
+*!*		oSheet.RANGE("A3:BC3").SELECT
+*!*		oSheet.RANGE("A3:BC3").MergeCells=.T.
+*!*		oSheet.RANGE("A3:BC3").FONT.bold=.T.
+*!*		oSheet.RANGE("A3:BC3").HorizontalAlignment = -4108
+
+*!*	*!*	    With Selection
+*!*	*!*	        .HorizontalAlignment = xlCenter
+*!*	*!*	        .VerticalAlignment = xlBottom
+*!*	*!*	        .WrapText = False
+*!*	*!*	        .Orientation = 0
+*!*	*!*	        .AddIndent = False
+*!*	*!*	        .IndentLevel = 0
+*!*	*!*	        .ShrinkToFit = False
+*!*	*!*	        .ReadingOrder = xlContext
+*!*	*!*	        .MergeCells = False
+*!*	*!*	        .font.bold = .t.
+*!*	*!*	    EndWith
+*!*	*!*	    Selection.Merge
+
+
+*!*		lnRow = lnRow + 1
+*!*		oSheet.RANGE("A4:BC4").FONT.bold=.T.
+*!*		oSheet.RANGE("A4:BC4").WrapText = .T.
+*!*		oSheet.RANGE("A4:BC4").FONT.SIZE = 8
+*!*		oSheet.RANGE("A4:BC4").HorizontalAlignment = -4108
+
+*!*		oSheet.Cells(lnRow,1).VALUE = "SCC"
+*!*		oSheet.Cells(lnRow,2).VALUE = "SCC Pipe"
+*!*		oSheet.Cells(lnRow,3).VALUE = "SCC Terrain"
+*!*		oSheet.Cells(lnRow,4).VALUE = "SCC C"
+*!*		oSheet.Cells(lnRow,5).VALUE = "Cri P"
+*!*		oSheet.Cells(lnRow,6).VALUE = "Cri T"
+*!*		oSheet.Cells(lnRow,7).VALUE = "Cri C"
+*!*		oSheet.Cells(lnRow,8).VALUE = "Summary"
+*!*		oSheet.Cells(lnRow,9).VALUE = "From"
+*!*		oSheet.Cells(lnRow,10).VALUE = "To"
+*!*		oSheet.Cells(lnRow,11).VALUE = "Length"
+*!*		oSheet.Cells(lnRow,12).VALUE = "Longitude"
+*!*		oSheet.Cells(lnRow,13).VALUE = "Latitude"
+*!*		oSheet.Cells(lnRow,14).VALUE = "Dia"
+*!*		oSheet.Cells(lnRow,15).VALUE = "Year of Coating"
+*!*		oSheet.Cells(lnRow,16).VALUE = "Soil Codes"
+*!*		oSheet.Cells(lnRow,17).VALUE = "Land Use"
+*!*		oSheet.Cells(lnRow,18).VALUE = "Parent Material"
+*!*		oSheet.Cells(lnRow,19).VALUE = "Drainage"
+*!*		oSheet.Cells(lnRow,20).VALUE = "Topography"
+*!*		oSheet.Cells(lnRow,21).VALUE = "Soil Texture C"
+*!*		oSheet.Cells(lnRow,22).VALUE = "Ph"
+*!*		oSheet.Cells(lnRow,23).VALUE = "Resistivity"
+*!*		oSheet.Cells(lnRow,24).VALUE = "Manufacture"
+*!*		oSheet.Cells(lnRow,25).VALUE = "Coating"
+*!*		oSheet.Cells(lnRow,26).VALUE = "Wall thk. (in)"
+*!*		oSheet.Cells(lnRow,27).VALUE = "Seam Type"
+*!*		oSheet.Cells(lnRow,28).VALUE = "Grade"
+*!*		oSheet.Cells(lnRow,29).VALUE = "Heavy Wall"
+*!*		oSheet.Cells(lnRow,30).VALUE = "Casings"
+*!*		oSheet.Cells(lnRow,31).VALUE = "Weights"
+*!*		oSheet.Cells(lnRow,32).VALUE = "Direct Crossing"
+*!*		oSheet.Cells(lnRow,33).VALUE = "Dxing PR"
+*!*		oSheet.Cells(lnRow,34).VALUE = "Dxing GR"
+*!*		oSheet.Cells(lnRow,35).VALUE = "Dxing RR"
+*!*		oSheet.Cells(lnRow,36).VALUE = "Dxing DR"
+*!*		oSheet.Cells(lnRow,37).VALUE = "%IR"
+*!*		oSheet.Cells(lnRow,38).VALUE = "P/S On"
+*!*		oSheet.Cells(lnRow,39).VALUE = "P/S Off"
+*!*		oSheet.Cells(lnRow,40).VALUE = "Comments"
+*!*		oSheet.Cells(lnRow,41).VALUE = "Col1"
+*!*		oSheet.Cells(lnRow,42).VALUE = "Col2"
+*!*		oSheet.Cells(lnRow,43).VALUE = "Col3"
+*!*		oSheet.Cells(lnRow,44).VALUE = "Col4"
+*!*		oSheet.Cells(lnRow,45).VALUE = "Col5"
+*!*		oSheet.Cells(lnRow,46).VALUE = "Col6"
+*!*		oSheet.Cells(lnRow,47).VALUE = "Col7"
+*!*		oSheet.Cells(lnRow,48).VALUE = "Col8"
+*!*		oSheet.Cells(lnRow,49).VALUE = "Col9"
+*!*		oSheet.Cells(lnRow,50).VALUE = "Col10"
+*!*		oSheet.Cells(lnRow,51).VALUE = "Col11"
+*!*		oSheet.Cells(lnRow,52).VALUE = "Col12"
+*!*		oSheet.Cells(lnRow,53).VALUE = "Col13"
+*!*		oSheet.Cells(lnRow,54).VALUE = "Col14"
+*!*		oSheet.Cells(lnRow,55).VALUE = "Col15"
+
+
+*!*		oSheet.RANGE(oSheet.Cells(1,1), oSheet.Cells(RECCOUNT(),55)).FONT.SIZE = 8
+*!*		oSheet.RANGE(oSheet.Cells(lnRow+1,1), oSheet.Cells(RECCOUNT(),1)).FONT.bold = .T.
+
+*!*	*oSheet.Cells(lnRow,1).FONT.bold=.T.
+*!*	*oSheet.RANGE("A1:BC5000").FONT.SIZE = 8
+
+*!*		SELECT final
+*!*		GO TOP
+*!*	*DO WHILE NOT EOF()
+*!*		SCAN
+*!*			lnRow = lnRow + 1
+*!*	*!*	    IF lnRow = 3
+*!*	*!*	        oSheet.Cells(lnRow,1).Value = [FoxPro Rocks!]
+*!*	*!*
+*!*	*!*	        lnRow = 3
+*!*	*!*	        lnCol = 3
+*!*	*!*	        oSheet.Range([C3]).Select
+*!*	*!*	        oSheet.Cells(lnRow,lnCol).Value = [Qtr 1]
+*!*	*!*	        oSheet.Cells(lnRow,lnCol).Font.Bold = .T.
+*!*	*!*
+*!*	*!*	        *oSheet.Cells(lnRow,lnCol).HorizontalAlignment = xlCenter
+*!*	*!*	        oSheet.Cells(lnRow,lnCol).HorizontalAlignment = 3
+*!*	*!*
+*!*	*!*	        lnCol = lnCol + 1
+*!*	*!*	        oSheet.Range([D3]).Select
+*!*	*!*	        oSheet.Cells(lnRow,lnCol).Value = [Qtr 2]
+*!*	*!*	        oSheet.Cells(lnRow,lnCol).Font.Bold = .T.
+*!*	*!*	        *oSheet.Cells(lnRow,lnCol).HorizontalAlignment = xlCenter
+*!*	*!*	        oSheet.Cells(lnRow,lnCol).HorizontalAlignment = 3
+*!*	*!*
+*!*	*!*	        lnCol = lnCol + 1
+*!*	*!*	        oSheet.Range([E3]).Select
+*!*	*!*	        oSheet.Cells(lnRow,lnCol).Value = [Qtr 3]
+*!*	*!*	        oSheet.Cells(lnRow,lnCol).Font.Bold = .T.
+*!*	*!*	        *oSheet.Cells(lnRow,lnCol).HorizontalAlignment = xlCenter
+*!*	*!*	        oSheet.Cells(lnRow,lnCol).HorizontalAlignment = 3
+
+*!*	*!*	        lnCol = lnCol + 1
+*!*	*!*	        oSheet.Range([F3]).Select
+*!*	*!*	        oSheet.Cells(lnRow,lnCol).Value = [Qtr 4]
+*!*	*!*	        oSheet.Cells(lnRow,lnCol).Font.Bold = .T.
+*!*	*!*	        *oSheet.Cells(lnRow,lnCol).HorizontalAlignment = xlCenter
+*!*	*!*	        oSheet.Cells(lnRow,lnCol).HorizontalAlignment = 3
+*!*	*!*
+*!*	*!*	        lnRow = 4
+*!*	*!*	        lnBeginRange = lnRow
+*!*	*!*	    ENDIF
+
+*!*			oSheet.Cells(lnRow,1).VALUE = UPPER(ALLTRIM(SCC))
+*!*	*		oSheet.Cells(lnRow,1).Interior.ColorIndex = 35
+*!*	*		oSheet.Cells(lnRow,1).Interior.PATTERN = 1
+
+*!*			oSheet.Cells(lnRow,2).VALUE = ALLTRIM(SCC_p)
+*!*			oSheet.Cells(lnRow,3).VALUE = ALLTRIM(SCC_T)
+*!*			oSheet.Cells(lnRow,4).VALUE = ALLTRIM(SCC_C)
+*!*			oSheet.Cells(lnRow,5).VALUE = ALLTRIM(CRI_P)
+*!*			oSheet.Cells(lnRow,6).VALUE = ALLTRIM(CRI_T)
+*!*			oSheet.Cells(lnRow,7).VALUE = ALLTRIM(CRI_C)
+*!*			oSheet.Cells(lnRow,8).VALUE = ALLTRIM(CRI_SUMM)
+*!*			oSheet.Cells(lnRow,9).VALUE = begin_S
+*!*			oSheet.Cells(lnRow,9).NumberFormat = "0+00.00"
+*!*			oSheet.Cells(lnRow,10).VALUE = end_s
+*!*			oSheet.Cells(lnRow,10).NumberFormat = "0+00.00"
+*!*			oSheet.Cells(lnRow,11).VALUE = ENV_LEN
+*!*			oSheet.Cells(lnRow,11).NumberFormat = "0.00"
+*!*			oSheet.Cells(lnRow,12).VALUE = IIF(longitude<>0, ABS(longitude), '')
+*!*			oSheet.Cells(lnRow,13).VALUE = IIF(latitude<>0, latitude, '')
+*!*			oSheet.Cells(lnRow,14).VALUE = diameter
+*!*			oSheet.Cells(lnRow,15).VALUE = coat_year
+*!*			oSheet.Cells(lnRow,16).VALUE = soil_code
+*!*			oSheet.Cells(lnRow,17).VALUE = ALLTRIM(landuse)
+*!*			oSheet.Cells(lnRow,18).VALUE = ALLTRIM(p_material)
+*!*			oSheet.Cells(lnRow,19).VALUE = ALLTRIM(drainage)
+*!*			oSheet.Cells(lnRow,20).VALUE = ALLTRIM(topography)
+*!*			oSheet.Cells(lnRow,21).VALUE = ALLTRIM(c_hor_text)
+*!*			oSheet.Cells(lnRow,22).VALUE = p_h
+*!*			oSheet.Cells(lnRow,23).VALUE = resistive
+*!*			oSheet.Cells(lnRow,24).VALUE = ALLTRIM(pipe_manu)
+*!*			oSheet.Cells(lnRow,25).VALUE = ALLTRIM(type_scl)
+*!*			oSheet.Cells(lnRow,26).VALUE = wall_thick
+*!*			oSheet.Cells(lnRow,27).VALUE = ALLTRIM(long_seam)
+*!*			oSheet.Cells(lnRow,28).VALUE = ALLTRIM(pipe_grade)
+*!*			oSheet.Cells(lnRow,29).VALUE = ALLTRIM(h_w)
+*!*			oSheet.Cells(lnRow,30).VALUE = casing
+*!*			oSheet.Cells(lnRow,31).VALUE = Weight
+*!*			oSheet.Cells(lnRow,32).VALUE = D_Cross
+*!*			oSheet.Cells(lnRow,33).VALUE = dxing_pr
+*!*			oSheet.Cells(lnRow,34).VALUE = dxing_gr
+*!*			oSheet.Cells(lnRow,35).VALUE = dxing_rr
+*!*			oSheet.Cells(lnRow,36).VALUE = dxing_dr
+*!*			oSheet.Cells(lnRow,37).VALUE = IIF(ir<>0, ir, '')
+*!*			oSheet.Cells(lnRow,38).VALUE = IIF(ps_on<>0,ps_on,'')
+*!*			oSheet.Cells(lnRow,39).VALUE = IIF(ps_off<>0, ps_off,'')
+*!*			oSheet.Cells(lnRow,40).VALUE = ALLTRIM(notes)
+*!*			oSheet.Cells(lnRow,41).VALUE = col1
+*!*			oSheet.Cells(lnRow,42).VALUE = col2
+*!*			oSheet.Cells(lnRow,43).VALUE = col3
+*!*			oSheet.Cells(lnRow,44).VALUE = col4
+*!*			oSheet.Cells(lnRow,45).VALUE = col5
+*!*			oSheet.Cells(lnRow,46).VALUE = col6
+*!*			oSheet.Cells(lnRow,47).VALUE = col7
+*!*			oSheet.Cells(lnRow,48).VALUE = col8
+*!*			oSheet.Cells(lnRow,49).VALUE = col9
+*!*			oSheet.Cells(lnRow,50).VALUE = col10
+*!*			oSheet.Cells(lnRow,51).VALUE = col11
+*!*			oSheet.Cells(lnRow,52).VALUE = col12
+*!*			oSheet.Cells(lnRow,53).VALUE = col13
+*!*			oSheet.Cells(lnRow,54).VALUE = col14
+*!*			oSheet.Cells(lnRow,55).VALUE = col15
+
+*!*		ENDSCAN
+*!*		lnRow=lnRow+1
+*!*		oSheet.Cells(lnRow,1).VALUE = "Disclaimer : "+ALLTRIM(THISFORM.txtsection_nm.VALUE)
+
+*!*		oExcel.VISIBLE = .T.

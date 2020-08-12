@@ -1,0 +1,543 @@
+Set Deleted On
+Set Exact On
+
+IF USED("errorcur")
+SELECT errorcur
+USE 
+endif
+
+CREATE CURSOR errorcur (Remarks c(40), rec_no n(5), rec_value c(30))
+
+IF !USED("survey")
+SELECT 0
+USE survey
+ENDIF
+
+SELECT survey
+Go top
+
+DO WHILE !EOF()
+SELECT survey
+mrecno = RECNO()
+
+IF Survey.longitude = 0 OR ISNULL(Survey.longitude )=.t.
+SELECT errorcur
+APPEND BLANK
+REPLACE Remarks WITH "Invalid Longitude"
+replace rec_no WITH mrecno
+endif
+
+IF Survey.latitude = 0 OR ISNULL(Survey.latitude )=.t.
+SELECT errorcur
+APPEND BLANK
+REPLACE Remarks WITH "Invalid Latitude"
+replace rec_no WITH mrecno
+endif
+
+IF Survey.begin_s = 0 OR ISNULL(Survey.begin_s )=.t.
+SELECT errorcur
+APPEND BLANK
+REPLACE Remarks WITH "Invalid Begin Chainage"
+replace rec_no WITH mrecno
+endif
+
+IF Survey.End_s = 0 OR ISNULL(Survey.end_s )=.t.
+SELECT errorcur
+APPEND BLANK
+REPLACE Remarks WITH "Invalid End Chainage"
+replace rec_no WITH mrecno
+endif
+
+IF Survey.End_s < Survey.begin_s
+SELECT errorcur
+APPEND BLANK
+REPLACE Remarks WITH "End Chainage is less then Begin Chainage"
+replace rec_no WITH mrecno
+endif
+
+IF RTRIM(ltrim(Survey.landuse))='' OR ISNULL(Survey.landuse)=.t.
+SELECT errorcur
+APPEND BLANK
+REPLACE Remarks WITH "Blank Land Use"
+replace rec_no WITH mrecno
+endif
+
+IF RTRIM(ltrim(Survey.landuse))<>'' 
+
+IF !USED("Landuse")
+SELECT 0
+USE landuse
+ENDIF
+
+SELECT landuse
+GO top
+
+LOCATE FOR ALLTRIM(UPPER(landuse)) = ALLTRIM(UPPER(Survey.landuse))
+IF !FOUND()
+
+SELECT errorcur
+APPEND BLANK
+REPLACE Remarks WITH "Invalid Land Use"
+replace rec_no WITH mrecno
+endif
+endif
+
+
+endif
+
+Create Cursor temp1 (begin_S  N(12,3))
+
+Select begin_S From pipe_pipe Into Cursor t1
+Select temp1
+Append From Dbf('t1')
+
+Select end_s As begin_S From pipe_pipe Into Cursor t1
+Select temp1
+Append From Dbf('t1')
+
+Select begin_S From survey Into Cursor t1 Where Isnull(begin_S)=.F.
+Select temp1
+Append From Dbf('t1')
+
+Select end_s As "begin_s" From survey Into Cursor t1 Where Isnull(end_s)=.F.
+Select temp1
+Append From Dbf('t1')
+
+*---------------
+Select begin_S From pipe_coat Into Cursor t1 Where Isnull(begin_S)=.F.
+Select temp1
+Append From Dbf('t1')
+
+Select end_s As "begin_s" From pipe_coat Into Cursor t1 Where Isnull(end_s)=.F.
+Select temp1
+Append From Dbf('t1')
+
+Select begin_S From pipe_case Into Cursor t1 Where Isnull(begin_S)=.F.
+Select temp1
+Append From Dbf('t1')
+
+Select end_s As "begin_s" From pipe_case Into Cursor t1 Where Isnull(end_s)=.F.
+Select temp1
+Append From Dbf('t1')
+
+Select begin_S From pipe_weight Into Cursor t1 Where Isnull(begin_S)=.F.
+Select temp1
+Append From Dbf('t1')
+
+Select end_s As "begin_s" From pipe_weight Into Cursor t1 Where Isnull(end_s)=.F.
+Select temp1
+Append From Dbf('t1')
+
+
+Select begin_S From cips_road Into Cursor t1 Where Isnull(begin_S)=.F.
+Select temp1
+Append From Dbf('t1')
+
+Select end_s As "begin_s" From cips_road Into Cursor t1 Where Isnull(end_s)=.F.
+Select temp1
+Append From Dbf('t1')
+
+*---------------
+
+Select Distinct *, 00000000.000 As end_s  From temp1 Into Cursor temp1 Readwrite ;
+	ORDER By begin_S
+
+Select temp1
+Scan
+	abc1=begin_S
+	Select Min(begin_S) As "end_s" From temp1 Where abc1<begin_S Into Cursor t2
+
+	Select temp1
+	Replace end_s With t2.end_s
+Endscan
+
+Select temp1
+Delete For end_s = 0.000
+
+Select begin_S, "a" As tp From temp1 ;
+	UNION Select end_s As begin_S , "a" As tp From temp1 ;
+	UNION Select chainage As begin_S, "b" As "tp" From cips_cips Into Cursor temp3 Order By 1
+
+Select Distinct begin_S, 00000000.000 As end_s  From temp3 Into Cursor temp1 Readwrite ;
+	ORDER By begin_S
+
+Scan
+	abc1=begin_S
+	Select Min(begin_S) As "end_s" From temp1 Where abc1<begin_S Into Cursor t2
+	Select temp1
+	Replace end_s With t2.end_s
+Ends
+
+Select temp1
+Delete For end_s = 0.000
+
+Select Distinct begin_S, begin_S As end_s From temp3 Into Cursor temp2 Where tp = "b"
+
+Select temp1
+Append From Dbf("temp2")
+
+Select * From temp1 Into Cursor temp1 Order By begin_S, end_s
+
+If !Used("pipe_Case")
+	Select 0
+	Use pipe_case
+Endif
+
+If !Used("cips_cips")
+	Select 0
+	Use cips_cips
+Endif
+
+If !Used("cips_road")
+	Select 0
+	Use cips_road
+Endif
+
+If !Used("soil_mst")
+	Select 0
+	Use soil_mst
+Endif
+
+If !Used("scc_asph")
+	Select 0
+	Use scc_asph
+Endif
+
+If !Used("scc_tape")
+	Select 0
+	Use scc_tape
+Endif
+
+Select 0
+Select begin_S, end_s, 000000.000 As start_dr  , 000000.000 As end_dr , road From cips_road ;
+	into Curs cips_dr Where !Isnull(cips_road.road) Order By begin_S Readwrite
+Replace All start_dr With ((begin_S + end_s)/2)-660
+Replace All end_dr With ((begin_S + end_s)/2)+660
+
+
+Select 0
+Create Curs final(SCC c(40),SCC_p c(1),SCC_T c(1),SCC_C c(1),CRI_P c(40),CRI_T c(40),CRI_C c(40),CRI_SUMM c(40),;
+	begin_S N(12,3),end_s N(12,3),ENV_LEN N(12,3),longitude N(12,7), latitude N(12,7),diameter N(5),coat_year Int, soil_code c(10),;
+	landuse c(20), p_material c(20), drainage c(20),topography c(20), c_hor_text c(20), p_h N(4,2), resistive N(4,2), pipe_manu c(20),;
+	type_scl c(20), wall_thick Float(10,5), long_seam c(20), pipe_grade c(20),;
+	h_w c(10), casing c(10), Weight c(10), D_Cross c(2), ir N(12,3), ps_on N(12,3), ps_off N(12,3), notes c(40))
+
+Append From Dbf("temp1")
+Replace All ENV_LEN With end_s - begin_S
+Scan
+
+	Scatter Memv
+	Select pipe_coat
+	Go Top
+*	Locate FOR (begin_S >= m.begin_S And end_s>=m.end_s) OR (begin_S <= m.begin_S And end_s>=m.begin_S AND end_s>=m.end_s)
+	Locate For (begin_S <= m.begin_S And end_s>=m.begin_S And end_s>=m.end_s)
+	If Found()
+		Select final
+		Replace type_scl With pipe_coat.type_scl
+		Select pipe_coat
+		abc= applied_dt
+	Endif
+
+	Select pipe_pipe
+	Go Top
+	Locate For begin_S <= m.begin_S And end_s>=m.begin_S And end_s>=m.end_s
+	If Found()
+		Select final
+		Replace wall_thick With pipe_pipe.wall_thick
+		Replace pipe_manu With pipe_pipe.pipe_manu
+		Replace diameter With pipe_pipe.diameter
+		Replace pipe_grade With pipe_pipe.pipe_grade
+		Replace long_seam With pipe_pipe.long_seam
+
+		If Isnull(abc) And Isnull(pipe_pipe.install_dt)
+			Replace coat_year  With 1900
+		Else
+			If Isnull(abc)
+				Replace coat_year  With Year(pipe_pipe.install_dt)
+			Else
+				If Isnull(pipe_pipe.install_dt)
+					Replace coat_year  With Year(abc)
+				Else
+					Replace coat_year With Iif(Year(abc)>Year(pipe_pipe.install_dt), Year(abc), Year(pipe_pipe.install_dt))
+				Endif
+			Endif
+		Endif
+	Endif
+
+	Select pipe_case
+	Go Top
+	Locate For begin_S <= m.begin_S And end_s>=m.begin_S And end_s>=m.end_s
+	If Found()
+		Select final
+		Replace casing With "Casing"
+	Endif
+
+	Select pipe_weight
+	Go Top
+	Locate For begin_S <= m.begin_S And end_s>=m.begin_S And end_s>=m.end_s
+	If Found()
+		Select final
+		Replace Weight With "Weights"
+	Endif
+
+	Select survey
+	Go Top
+	Locate For begin_S <= m.begin_S And end_s>=m.begin_S And end_s>=m.end_s
+	If Found()
+		Select final
+		Replace landuse With IIF(ISNULL(survey.landuse),"",survey.landuse)
+		Replace p_h With IIF(ISNULL(survey.p_h),0.0,survey.p_h)
+		Replace resistive With IIF(ISNULL(survey.resistive),0.0,survey.resistive)
+		Replace notes With Iif(Isnull(survey.notes),"",survey.notes)
+
+		pm = survey.p_material
+
+		Select cips_road
+		Go Top
+		Locate For begin_S <= m.begin_S And end_s>=m.begin_S And end_s>=m.end_s
+		If Found()
+			Select final
+			If !Isnull(cips_road.road)
+				Replace p_material With cips_road.road
+				Replace soil_code With "13"
+				Replace topography With "L"
+				Replace D_Cross With cips_road.road
+			Else
+				Select final
+				Replace p_material With IIF(ISNULL(survey.p_material),"",survey.p_material)
+			Endif
+
+			If !Isnull(cips_road.water_f)
+				Replace drainage With cips_road.water_f
+				Replace topography With "D"
+			Else
+				Select final
+				Replace drainage With survey.drainage
+			Endif
+
+		Else
+			Select final
+			Replace p_material With survey.p_material
+			Replace drainage With survey.drainage
+		Endif
+
+		Select final
+		If Len(Alltrim(topography))=0
+
+			If Upper(Left(survey.topography,1))="S"
+				Replace topography With "SS"
+			Else
+				Replace topography With Left(survey.topography,1)
+			Endif
+
+		Endif
+		Select final
+		Replace h_w With Iif(wall_thick>=.500, "HW","")
+
+		Select cips_cips
+		Go Top
+		Locate For chainage = m.begin_S And chainage=m.end_s
+		If Found()
+			Select final
+			Replace ir With cips_cips.ir
+			Replace ps_on With cips_cips.ps_on
+			Replace ps_off With cips_cips.ps_off
+
+		Endif
+	Endif
+
+	Select soil_mst
+	Go Top
+	Locate For Upper(Alltrim(soil_mst.p_material)) = Upper(Alltrim(final.p_material))
+	If Found()
+		Select final
+		Replace soil_code With soil_mst.soil_code
+	Endif
+
+	Select soil_mst
+	Go Top
+	Locate For Upper(Alltrim(soil_mst.p_material)) = Upper(Alltrim(final.drainage))
+	If Found()
+		Select final
+		If Len(Alltrim(soil_code))>0
+			Replace soil_code With Alltrim(soil_code)+","+Alltrim(soil_mst.soil_code)
+		Else
+			Replace soil_code With soil_mst.soil_code
+		Endif
+	Endif
+
+
+	Select cips_dr
+	Go Top
+*	Locate FOR (begin_S >= m.begin_S And end_s>=m.end_s) OR (begin_S <= m.begin_S And end_s>=m.begin_S AND end_s>=m.end_s)
+
+	Locate For (start_dr <= m.begin_S And end_dr>=m.begin_S And end_dr>=m.end_s)
+	If Found()
+		Select final
+		abc="DR"
+
+		If final.D_Cross = "PR"
+			abc = "PR"
+		Endif
+
+		If final.D_Cross = "GR"
+			If cips_dr.road ="PR"
+				abc="PR"
+			Endif
+			If cips_dr.road ="GR"
+				abc="GR"
+			Endif
+			If cips_dr.road ="RR"
+				abc="GR"
+			Endif
+
+			If cips_dr.road ="DR"
+				abc="GR"
+			Endif
+		Endif
+
+		If final.D_Cross = "RR"
+			If cips_dr.road ="PR"
+				abc="PR"
+			Endif
+			If cips_dr.road ="GR"
+				abc="GR"
+			Endif
+			If cips_dr.road ="RR"
+				abc="RR"
+			Endif
+
+			If cips_dr.road ="DR"
+				abc="RR"
+			Endif
+		Endif
+
+		If final.D_Cross = "DR"
+			If cips_dr.road ="PR"
+				abc="PR"
+			Endif
+			If cips_dr.road ="GR"
+				abc="GR"
+			Endif
+			If cips_dr.road ="RR"
+				abc="RR"
+			Endif
+
+			If cips_dr.road ="DR"
+				abc="DR"
+			Endif
+		Endif
+
+		Select final
+		Replace D_Cross With abc
+	ENDIF
+	
+		Select final
+		
+		abc=""
+		If Len(Alltrim(casing))>0
+			abc="Casing"
+			Replace SCC_p With "0"
+		Endif
+
+		If Upper(Alltrim(type_scl)) = "FBE" Or Upper(Alltrim(type_scl)) = "EPOXY"
+			abc=abc+Alltrim(type_scl)
+			Replace SCC_p With "0"
+		Endif
+
+		If Year(Date())-final.coat_year<10
+			abc=abc+Alltrim(Str(final.coat_year))
+			Replace SCC_p With "0"
+		Endif
+
+		If wall_thick>.5000
+			abc=abc+"HW"
+			Replace SCC_p With "0"
+		Endif
+		Replace SCC_p With Iif(Len(Alltrim(final.SCC_p))=0,"1",final.SCC_p)
+		Replace CRI_P With abc
+		abc=""
+
+		IF ir>=35
+			abc=abc+"%IR"
+			Replace SCC_c With "1"
+		ENDIF
+
+		IF ps_on<>0 AND ps_on-ps_off <=100
+			abc=abc+"Diff<=100"
+			Replace SCC_c With "1"
+		ENDIF
+		
+		IF ps_on<>0 AND ps_on<=850
+			abc=abc+"on<=850"
+			Replace SCC_c With "1"
+		ENDIF
+		
+		IF ps_off<>0 AND ps_off<=850
+			abc=abc+"off<=850"
+			Replace SCC_c With "1"
+		ENDIF
+
+		Replace SCC_C With Iif(Len(Alltrim(final.SCC_C))=0,"0",final.SCC_C)
+		Replace CRI_C With abc
+	
+*		IF UPPER(LEFT(ALLTRIM(final.type_scl),3)) = "ASE" OR UPPER(LEFT(ALLTRIM(final.type_scl),3)) = "ASP" OR UPPER(LEFT(ALLTRIM(final.type_scl),3)) = "COL" OR UPPER(LEFT(ALLTRIM(final.type_scl),3)) = "CTE"
+			select scc_asph
+			GO top
+			LOCATE FOR UPPER(ALLTRIM(soil_type)) = UPPER(ALLTRIM(final.p_material)) AND UPPER(ALLTRIM(soil_code)) = UPPER(ALLTRIM(final.soil_code)) AND UPPER(ALLTRIM(Topography)) = UPPER(ALLTRIM(final.Topography))
+			IF FOUND()
+			
+				SELECT final
+				if UPPER(LEFT(ALLTRIM(drainage),1)) = "W"				
+				Replace SCC_t With "1"
+				replace cri_t WITH scc_asph.scc_code
+				ELSE
+				Replace SCC_t With "0"
+				replace cri_t WITH "NonW"
+				endif
+		
+			ELSE
+				SELECT final
+				Replace SCC_t With "0"
+				replace cri_t WITH "NonSCCode"
+			ENDIF
+		
+		SELECT final
+			if UPPER(ALLTRIM(soil_code)) = "17" AND UPPER(LEFT(ALLTRIM(drainage),1)) = "R"
+				Replace SCC_t With "1"
+				replace cri_t WITH "ALSP1"
+			endif
+			
+			if UPPER(ALLTRIM(soil_code)) = "17" AND UPPER(LEFT(ALLTRIM(drainage),1)) = "F"
+				Replace SCC_t With "1"
+				replace cri_t WITH "ALSP2"
+			endif
+
+
+*		endif
+
+		IF UPPER(LEFT(ALLTRIM(final.type_scl),3)) = "TAP" OR UPPER(LEFT(ALLTRIM(final.type_scl),3)) = "TPE"
+			select scc_tape
+			GO top
+			LOCATE FOR UPPER(ALLTRIM(soil_type)) = UPPER(ALLTRIM(final.p_material)) AND UPPER(ALLTRIM(soil_code)) = UPPER(ALLTRIM(final.soil_code)) AND UPPER(ALLTRIM(Topography)) = UPPER(ALLTRIM(final.Topography))
+			IF FOUND()
+			SELECT final
+			Replace SCC_t With "1"
+			replace cri_t WITH scc_asph.scc_code
+			ELSE
+			SELECT final
+			Replace SCC_t With "0"
+			replace cri_t WITH "NonSCCode"
+			endif
+		endif
+
+	SELECT final
+	replace scc WITH IIF(scc_t="1" OR scc_c="1",ALLTRIM(cri_t)+ALLTRIM(cri_c),"")
+	replace cri_summ WITH IIF(LEN(ALLTRIM(cri_p))>0, Cri_p, ALLTRIM(cri_t)+ALLTRIM(cri_c))
+		
+Endscan
+
+*!*	SELECT final
+*!*	GO top
+*!*	COPY TO c:\daoutput TYPE xls
+
